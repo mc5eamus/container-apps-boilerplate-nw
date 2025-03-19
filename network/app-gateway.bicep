@@ -10,9 +10,6 @@ param subnetId string
 @description('The subnet ID of the Container App Environment that will be used for the Private Link service')
 param envSubnetId string
 
-@description('The FQDN of the Container App')
-param containerAppFqdn string
-
 @description('The name of the Private Link Service')
 param privateLinkServiceName string
 
@@ -21,6 +18,42 @@ param location string
 
 @description('The tags that will be applied to the App Gateway')
 param tags object
+
+@description('collection of backend pools with name and fqdn')
+param backendPools array
+
+@description('collection of path maps with backend pool name and mapping path]')
+param pathMaps array
+
+var backendPoolsConfig = [
+  for pool in backendPools: {
+    name: pool.name
+    properties: {
+      backendAddresses: [
+        {
+          fqdn: pool.fqdn
+        }
+      ]
+    }
+  }
+]
+
+var pathRulesConfig = [
+  for path in pathMaps: {
+    name: path.name
+    properties: {
+      paths: [
+        path.path
+      ]
+      backendAddressPool: {
+        id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', appGatewayName, path.backendPoolName)
+      }
+      backendHttpSettings: {
+        id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGatewayName, 'my-agw-backend-setting')
+      }
+    }
+  }
+]
 
 resource appGateway 'Microsoft.Network/applicationGateways@2023-11-01' = {
   name: appGatewayName
@@ -85,18 +118,8 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-11-01' = {
         }
       }
     ]
-    backendAddressPools: [
-      {
-        name: 'my-agw-backend-pool'
-        properties: {
-          backendAddresses: [
-            { 
-              fqdn: containerAppFqdn
-            }
-          ]
-        }
-      }
-    ]
+    backendAddressPools: backendPoolsConfig
+
     backendHttpSettingsCollection: [
       { 
         name: 'my-agw-backend-setting'
@@ -123,20 +146,31 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-11-01' = {
         }
       }
     ]
+    urlPathMaps: [
+      { 
+        name: 'my-agw-url-path-map'
+        properties: {
+          defaultBackendAddressPool: {
+            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', appGatewayName, pathMaps[0].backendPoolName)
+          }
+          defaultBackendHttpSettings: {
+            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGatewayName, 'my-agw-backend-setting')
+          }
+          pathRules: pathRulesConfig
+        }
+      }
+    ]
     requestRoutingRules: [
       { 
         name: 'my-agw-routing-rule'
         properties: {
           priority: 1
-          ruleType: 'Basic'
+          ruleType: 'PathBasedRouting'
           httpListener: {
             id: resourceId('Microsoft.Network/applicationGateways/httpListeners', appGatewayName, 'my-agw-listener')
           }
-          backendAddressPool: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', appGatewayName, 'my-agw-backend-pool')
-          }
-          backendHttpSettings: {
-            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGatewayName, 'my-agw-backend-setting')
+          urlPathMap: {
+            id: resourceId('Microsoft.Network/applicationGateways/urlPathMaps', appGatewayName, 'my-agw-url-path-map')
           }
         }
       }

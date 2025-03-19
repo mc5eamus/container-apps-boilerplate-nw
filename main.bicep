@@ -66,6 +66,18 @@ module containerApp 'host/container-app.bicep' = {
   params: {
     containerAppEnvName: env.outputs.containerAppEnvName
     containerAppName: containerAppName
+    containerImage: 'traefik/whoami:latest'
+    location: location
+    tags: tags
+  }
+}
+
+module containerApp1 'host/container-app.bicep' = {
+  name: 'app1'
+  params: {
+    containerAppEnvName: env.outputs.containerAppEnvName
+    containerAppName: '${containerAppName}-1'
+    containerImage: 'traefik/whoami:latest'
     location: location
     tags: tags
   }
@@ -85,7 +97,28 @@ module appGateway 'network/app-gateway.bicep' = {
   name: 'appgateway'
   params: {
     appGatewayName: appGatewayName
-    containerAppFqdn: containerApp.outputs.fqdn
+    backendPools: [
+      {
+        name: 'my-agw-backend-pool'
+        fqdn: containerApp.outputs.fqdn
+      }
+      {
+        name: 'my-agw-backend-pool02'
+        fqdn: containerApp1.outputs.fqdn
+      }
+    ]
+    pathMaps: [
+      {
+        name: 'my-agw-path-to-app01'
+        backendPoolName: 'my-agw-backend-pool'
+        path: '/app01/*'
+      }
+      {
+        name: 'my-agw-path-to-app02'
+        backendPoolName: 'my-agw-backend-pool02'
+        path: '/app02/*'
+      }
+    ]
     envSubnetId: vnet.outputs.acaSubnetId
     ipAddressName: ipAddressName
     location: location

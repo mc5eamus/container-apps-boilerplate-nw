@@ -75,7 +75,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
     template: {
-      revisionSuffix: 'firstrevision'
+      revisionSuffix: '02'
       containers: [
         {
           name: containerAppName

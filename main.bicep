@@ -112,11 +112,13 @@ module appGateway 'network/app-gateway.bicep' = {
         name: 'my-agw-path-to-app01'
         backendPoolName: 'my-agw-backend-pool'
         path: '/app01/*'
+        pathRewrite: '.*app01/(.*)'
       }
       {
         name: 'my-agw-path-to-app02'
         backendPoolName: 'my-agw-backend-pool02'
         path: '/app02/*'
+        pathRewrite: '.*app02/(.*)'
       }
     ]
     envSubnetId: vnet.outputs.acaSubnetId

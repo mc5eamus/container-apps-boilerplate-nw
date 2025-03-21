@@ -51,9 +51,35 @@ var pathRulesConfig = [
       backendHttpSettings: {
         id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGatewayName, 'my-agw-backend-setting')
       }
+      rewriteRuleSet: {
+        id: resourceId('Microsoft.Network/applicationGateways/rewriteRuleSets', appGatewayName, 'my-agw-rewrite-set')
+      }
     }
   }
 ]
+
+var rewriteRuleSet = [
+  for (path, pathIdx) in pathMaps: {
+      ruleSequence: pathIdx+1
+      conditions: [
+        {
+          variable: 'var_uri_path'
+          pattern: '${path.pathRewrite}'
+          ignoreCase: true
+          negate: false
+        }
+      ]
+      name: 'rule-${pathIdx+1}'
+      actionSet: {
+        requestHeaderConfigurations: []
+        responseHeaderConfigurations: []
+        urlConfiguration: {
+          modifiedPath: '/{var_uri_path_1}'
+          reroute: false
+        }
+      }
+  }
+] 
 
 resource appGateway 'Microsoft.Network/applicationGateways@2023-11-01' = {
   name: appGatewayName
@@ -156,6 +182,9 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-11-01' = {
           defaultBackendHttpSettings: {
             id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGatewayName, 'my-agw-backend-setting')
           }
+          defaultRewriteRuleSet: {
+            id: resourceId('Microsoft.Network/applicationGateways/rewriteRuleSets', appGatewayName, 'my-agw-rewrite-set')
+          }
           pathRules: pathRulesConfig
         }
       }
@@ -172,6 +201,14 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-11-01' = {
           urlPathMap: {
             id: resourceId('Microsoft.Network/applicationGateways/urlPathMaps', appGatewayName, 'my-agw-url-path-map')
           }
+        }
+      }
+    ]
+    rewriteRuleSets: [
+      {
+        name: 'my-agw-rewrite-set'
+        properties: {
+          rewriteRules: rewriteRuleSet
         }
       }
     ]
